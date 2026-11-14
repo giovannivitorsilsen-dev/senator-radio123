@@ -1,0 +1,37 @@
+name: Unfollow Android
+on:
+  push:
+    branches: [unfollow-android]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: python -m unittest discover -s tests
+      - run: sudo apt-get update && sudo apt-get install -y autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev build-essential ccache libltdl-dev
+      - run: pip install buildozer==1.5.0 cython==0.29.36 setuptools
+      - run: buildozer android debug
+        env:
+          BUILDOZER_ALLOW_ORG_TEST_DOMAIN: '1'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Unfollow-Android
+          path: bin/*.apk
+          if-no-files-found: error
+      - name: Publish signed debug APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp bin/*.apk Unfollow-0.3.apk
+          tag="unfollow-0.3-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" Unfollow-0.3.apk --target "$GITHUB_SHA" --title "Unfollow 0.3 per Android" --prerelease --notes "APK di prova ARM64."
